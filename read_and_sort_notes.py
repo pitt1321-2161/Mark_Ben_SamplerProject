@@ -108,6 +108,39 @@ def print_notes():
 		for note in notes_db:
 			print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
 
+
+# Tests the sample wave I created in a different function. The first quarter of the file is just a ~440hz sin
+# The second quarter is a roughly 554hz sin wave
+# The third quarter is a roughly 659hz sin wave
+def test_sample_wave(chunks):
+	for i in range(len(chunks)/4):
+		chunk = chunks[i]
+
+		w = numpy.fft.rfft(chunk)
+		freqs = numpy.fft.fftfreq(len(w))
+		idx = numpy.argmax(numpy.abs(w))
+		frequency = freqs[idx] * (sr/2)
+
+		numpy.testing.assert_allclose(frequency, note_freqs["A"], rtol=0.01)
+	for i in range(len(chunks)/4,len(chunks)/2):
+		chunk = chunks[i]
+
+		w = numpy.fft.rfft(chunk)
+		freqs = numpy.fft.fftfreq(len(w))
+		idx = numpy.argmax(numpy.abs(w))
+		frequency = freqs[idx] * (sr/2)
+
+		numpy.testing.assert_allclose(frequency, note_freqs["C#"], rtol=0.01)
+	for i in range(len(chunks)/2,3*len(chunks)/4):
+		chunk = chunks[i]
+
+		w = numpy.fft.rfft(chunk)
+		freqs = numpy.fft.fftfreq(len(w))
+		idx = numpy.argmax(numpy.abs(w))
+		frequency = freqs[idx] * (sr/2)
+
+		numpy.testing.assert_allclose(frequency, note_freqs["E"], rtol=0.01)
+
 if __name__ == '__main__':
 	# figure out the correct dt length based on the tempo of the output wave you want
 	dt = compute_dt(bpm)
@@ -120,6 +153,8 @@ if __name__ == '__main__':
 	note_length = dt * sr
 
 	wave_chunks = split_wave(wave_data, int(note_length))
+
+	test_sample_wave(wave_chunks)
 
 	for chunk in wave_chunks:
 		if len(chunk) != int(note_length):
