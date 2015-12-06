@@ -3,6 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import waveIO
+import random
 
 sr = 44100.
 
@@ -191,12 +192,32 @@ def test_sample_wave(chunks):
 		numpy.testing.assert_allclose(frequency, note_freqs["E"], rtol=0.01)
 	print("Tests passed for sample wave!")
 
+def build_song(musicfile, dt):
+	note_time = numpy.arange(0,dt, 1/sr)
+	song_wave=numpy.array([])
+	with open(musicfile,'r') as music:
+		for line in music:
+			line = line.strip()
+			if line == '#' or line == '%':
+				continue
+			line_notes = line.split(',')
+			for note in line_notes:
+				note_name = note[:-1]
+				note_octave = note[-1]
+
+				note_sample_bin = notes_db[note_name][int(note_octave) - 1]
+				note_sample_index = random.choice(note_sample_bin)
+				note_sample = all_notes[note_sample_index]
+
+				song_wave = numpy.append(song_wave, note_sample)
+	return song_wave
+
+
 if __name__ == '__main__':
 	# figure out the correct dt length based on the tempo of the output wave you want
 	dt = compute_dt(bpm)
-
 	# read and parse each sample wave
-	for i in range(len(sys.argv) -1 ):
+	for i in range(1, len(sys.argv) - 1):
 		#read in the wave file and unpack its data
 		wave_data = waveIO.read_wav_file(sys.argv[i])
 		wave_data = waveIO.unpack(wave_data)
@@ -206,7 +227,7 @@ if __name__ == '__main__':
 
 		wave_chunks = split_wave(wave_data, int(note_length))
 
-		test_sample_wave(wave_chunks)
+		#test_sample_wave(wave_chunks)
 
 		for i in range(len(wave_chunks)):
 			chunk = wave_chunks[i]
@@ -215,10 +236,10 @@ if __name__ == '__main__':
 
 			store_note(chunk)
 	# read and parse the music file
-	#musicfile = sys.argv[-1]
+	musicfile = sys.argv[-2]
 	#musicfile = open(musicfile, 'r')
-	#song = build_song(musicfile)
-
+	song = build_song(musicfile, dt)
+	waveIO.write_wav_file(sys.argv[-1], waveIO.pack(song))
 	print_notes()
 
 	

@@ -32,7 +32,7 @@ waveIO.write_wav_file("samplewave.wav", waveIO.pack(t_sin))
 
 ##############
 # Now build a universal sample, with short sections for each note through a few octaves
-t = numpy.arrange(0, 0.5, dt)
+t = numpy.arange(0, 0.5, dt)
 big_sample = create_wave(440, t)
 big_sample = numpy.append(big_sample, create_wave(466.16, t))
 big_sample = numpy.append(big_sample, create_wave(493, t))
