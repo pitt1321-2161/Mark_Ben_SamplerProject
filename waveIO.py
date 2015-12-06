@@ -44,6 +44,7 @@ def pack(data):
     Pack a list of wav samples back into a string for audio
     output. This function returns the raw data as a string.
     """
+    from io import StringIO
     import cStringIO
     import struct
     

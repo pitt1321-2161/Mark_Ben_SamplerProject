@@ -195,23 +195,29 @@ if __name__ == '__main__':
 	# figure out the correct dt length based on the tempo of the output wave you want
 	dt = compute_dt(bpm)
 
-	#read in the wave file and unpack its data
-	wave_data = waveIO.read_wav_file("samplewave.wav")
-	wave_data = waveIO.unpack(wave_data)
-	wave_time = len(wave_data)/sr
+	# read and parse each sample wave
+	for i in range(len(sys.argv) -1 ):
+		#read in the wave file and unpack its data
+		wave_data = waveIO.read_wav_file(sys.argv[i])
+		wave_data = waveIO.unpack(wave_data)
+		wave_time = len(wave_data)/sr
 
-	note_length = dt * sr
+		note_length = dt * sr
 
-	wave_chunks = split_wave(wave_data, int(note_length))
+		wave_chunks = split_wave(wave_data, int(note_length))
 
-	test_sample_wave(wave_chunks)
+		test_sample_wave(wave_chunks)
 
-	for i in range(len(wave_chunks)):
-		chunk = wave_chunks[i]
-		if len(chunk) != int(note_length):
-			continue
+		for i in range(len(wave_chunks)):
+			chunk = wave_chunks[i]
+			if len(chunk) != int(note_length):
+				continue
 
-		store_note(chunk)
+			store_note(chunk)
+	# read and parse the music file
+	#musicfile = sys.argv[-1]
+	#musicfile = open(musicfile, 'r')
+	#song = build_song(musicfile)
 
 	print_notes()
 
