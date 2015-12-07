@@ -1,3 +1,6 @@
+#UPDATED FREQUENCIES
+
+
 import numpy
 import sys
 import matplotlib.pyplot as plt
@@ -10,7 +13,7 @@ sr = 44100.
 bpm = 148
 dt=0.5
 
-threshold = 1500
+threshold = 525
 
 # This dict holds the "ideal" values for each note in the Fourth octave.
 # A wave will be said to correspond to a given note if its frequency is within 1%
@@ -19,15 +22,15 @@ note_freqs = {
 "A":440.,
 "A#":466.16,
 "B":493.88,
-"C":523.25,
-"C#":554.37,
-"D":587.33,
-"D#":622.25,
-"E":659.26,
-"F":698.46,
-"F#":739.99,
-"G":783.99,
-"G#":830.61
+"C":261.63,
+"C#":277.18,
+"D":293.66,
+"D#":311.13,
+"E":329.63,
+"F":349.23,
+"F#":369.99,
+"G":391.99,
+"G#":415.31
 }
 
 #This will hold all our chopped up notes
@@ -82,13 +85,13 @@ def store_note(chunk):
 
 	#If the loudest frequency is greater than the threshold, store this chunk's index in the appropriate note bin
 	# repeat for the next loudest frequency and so on until the frequencies are no longer louder than the threshold
-	while numpy.abs(w[idx]) > threshold:
+	while numpy.abs(w[idx]) > threshold and 27.5 <= frequency <= 4187:
 		#determine what octave then note is in
 		# Doubling a frequency increases the note's octave by 1
 		# Thus, if the frequency is outside the default range, simply half or double each bin value to figure out what note it is
-		while frequency < (note_freqs["A"] * octave_multiplier)*0.99:
+		while frequency < (note_freqs["C"] * octave_multiplier)*0.99:
 			octave_multiplier = octave_multiplier/2.
-		while frequency > (note_freqs["G#"] * octave_multiplier)*1.01:
+		while frequency > (note_freqs["B"] * octave_multiplier)*1.01:
 			octave_multiplier = octave_multiplier*2
 
 		# store the note in the list of all stored chunk, and get its index within that list
@@ -133,12 +136,6 @@ def store_note(chunk):
 	
 def print_notes():
 	for i in range(6):
-		note="A"
-		print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
-		note="A#"
-		print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
-		note="B"
-		print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
 		note="C"
 		print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
 		note="C#"
@@ -157,6 +154,13 @@ def print_notes():
 		print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
 		note="G#"
 		print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
+		note="A"
+		print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
+		note="A#"
+		print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
+		note="B"
+		print("{!s}{!s}: {!s}".format(note, i+1, len(notes_db[note][i])))
+		
 
 
 # Tests the sample wave I created in a different function. The first quarter of the file is just a ~440hz sin
@@ -198,7 +202,11 @@ def build_song(musicfile, dt):
 	with open(musicfile,'r') as music:
 		for line in music:
 			line = line.strip()
-			if line == '#' or line == '%':
+			if line == '#':
+				continue
+			if line == '%':
+				empty_sample = numpy.zeros((dt * sr) - 1)
+				song_wave = numpy.append(song_wave, empty_sample)
 				continue
 			line_notes = line.split(',')
 			for note in line_notes:
@@ -210,14 +218,18 @@ def build_song(musicfile, dt):
 				note_sample = all_notes[note_sample_index]
 
 				song_wave = numpy.append(song_wave, note_sample)
+				song_wave = numpy.append(song_wave, note_sample[::-1])
+				song_wave = numpy.append(song_wave, note_sample)
+
 	return song_wave
 
 
 if __name__ == '__main__':
+	global dt
 	# figure out the correct dt length based on the tempo of the output wave you want
 	dt = compute_dt(bpm)
 	# read and parse each sample wave
-	for i in range(1, len(sys.argv) - 1):
+	for i in range(1, len(sys.argv) - 2):
 		#read in the wave file and unpack its data
 		wave_data = waveIO.read_wav_file(sys.argv[i])
 		wave_data = waveIO.unpack(wave_data)
@@ -226,6 +238,7 @@ if __name__ == '__main__':
 		note_length = dt * sr
 
 		wave_chunks = split_wave(wave_data, int(note_length))
+		print(len(wave_chunks))
 
 		#test_sample_wave(wave_chunks)
 
@@ -235,11 +248,10 @@ if __name__ == '__main__':
 				continue
 
 			store_note(chunk)
+	print_notes()
 	# read and parse the music file
 	musicfile = sys.argv[-2]
-	#musicfile = open(musicfile, 'r')
 	song = build_song(musicfile, dt)
 	waveIO.write_wav_file(sys.argv[-1], waveIO.pack(song))
-	print_notes()
 
 	
