@@ -13,9 +13,9 @@ dt = 1 / sr
 NFFT = 1024
 fs = 1.0/dt
 t = numpy.arange(0,2,dt)
-t_sin=create_wave(440, t)
+t_sin=create_wave(440 * 2**(7/12.), t)
 third_sin=create_wave(440 * 2**(4/12.), t)
-fifth_sin=create_wave(440 * 2**(7/12.), t)
+fifth_sin=create_wave(440, t)
 
 chord_sin = t_sin + third_sin + fifth_sin
 
@@ -23,7 +23,23 @@ t_sin = numpy.append(t_sin, third_sin)
 t_sin = numpy.append(t_sin, fifth_sin)
 t_sin = numpy.append(t_sin, chord_sin)
 
-data, freqs, bins, im = plt.specgram(t_sin, NFFT=NFFT, Fs=fs, noverlap=900)
+t_sin_fft = (numpy.abs(numpy.fft.fft(t_sin)) / len(t_sin))
+freqs = numpy.fft.fftfreq(len(t_sin_fft), 1/44100.)
+idx = numpy.argsort(freqs)
+frequency = freqs[idx] * (sr/2)
+plt.plot(freqs[idx], t_sin_fft[idx])
+plt.xlim(0,1000)
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Absolute value of FFT Magnitude, divided by N")
+#plt.yscale("log")
+plt.title("Power spectrum of sample wave")
+plt.show()
+
+
+data, freqs, bins, im = plt.specgram(t_sin, NFFT=NFFT, Fs=fs, noverlap=NFFT/2)
+plt.title("Spectrogram, notes in reverse, window size = 1024, sr = 44100")
+plt.ylabel("Frequency (Hz)")
+plt.xlabel("Time (s)")
 plt.ylim(0,800)
 plt.show()
 #print(data)
