@@ -13,7 +13,7 @@ sr = 44100.
 bpm = 148
 dt=0.5
 
-threshold = 525
+threshold = 1400
 
 # This dict holds the "ideal" values for each note in the Fourth octave.
 # A wave will be said to correspond to a given note if its frequency is within 1%
@@ -83,6 +83,11 @@ def store_note(chunk):
 	idx = numpy.argmax(numpy.abs(w))
 	frequency = freqs[idx] * (sr/2)
 
+	if numpy.abs(w[idx]) > threshold and 27.5 <= frequency <= 4187:
+		# store the note in the list of all stored chunk, and get its index within that list
+		all_notes.append(chunk)
+		note_index = len(all_notes) - 1
+
 	#If the loudest frequency is greater than the threshold, store this chunk's index in the appropriate note bin
 	# repeat for the next loudest frequency and so on until the frequencies are no longer louder than the threshold
 	while numpy.abs(w[idx]) > threshold and 27.5 <= frequency <= 4187:
@@ -93,10 +98,6 @@ def store_note(chunk):
 			octave_multiplier = octave_multiplier/2.
 		while frequency > (note_freqs["B"] * octave_multiplier)*1.01:
 			octave_multiplier = octave_multiplier*2
-
-		# store the note in the list of all stored chunk, and get its index within that list
-		all_notes.append(chunk)
-		note_index = len(all_notes) - 1
 
 		# iterate over each note in the scale, testing the chunk frequency
 		# If the chunk frequency is within 1% of the note's frequency for a given octave,
@@ -127,6 +128,7 @@ def store_note(chunk):
 
 		#delete this frequency and its data from w and freqs, then compute a new idx and frequency
 		w = numpy.delete(w,idx)
+		octave_multiplier = 1
 		freqs = numpy.delete(freqs,idx)
 		idx = numpy.argmax(numpy.abs(w))
 		frequency = freqs[idx] * (sr/2)
@@ -218,8 +220,7 @@ def build_song(musicfile, dt):
 				note_sample = all_notes[note_sample_index]
 
 				song_wave = numpy.append(song_wave, note_sample)
-				song_wave = numpy.append(song_wave, note_sample[::-1])
-				song_wave = numpy.append(song_wave, note_sample)
+
 
 	return song_wave
 
@@ -238,7 +239,6 @@ if __name__ == '__main__':
 		note_length = dt * sr
 
 		wave_chunks = split_wave(wave_data, int(note_length))
-		print(len(wave_chunks))
 
 		#test_sample_wave(wave_chunks)
 
@@ -249,6 +249,7 @@ if __name__ == '__main__':
 
 			store_note(chunk)
 	print_notes()
+	
 	# read and parse the music file
 	musicfile = sys.argv[-2]
 	song = build_song(musicfile, dt)
