@@ -59,7 +59,8 @@ if __name__ == '__main__':
 		freqs6[note] = 4*freqs4[note]
 	musicfile = sys.argv[1]
 	musicwave = build_song(musicfile)
-	data, freqs, bins, im = plt.specgram(musicwave, NFFT=1024, Fs=44100, noverlap=900)
+	data, freqs, bins, im = plt.specgram(musicwave, NFFT=2048, Fs=44100, noverlap=900)
 	plt.ylim(0,800)
+	plt.title("Spectrogram of analytic_furelise.wav")
 	plt.show()
 	waveIO.write_wav_file("analytic_furelise.wav", waveIO.pack(musicwave))
