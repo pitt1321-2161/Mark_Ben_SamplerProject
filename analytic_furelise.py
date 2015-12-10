@@ -7,6 +7,14 @@ import waveIO
 def create_wave(freq,t):
     return 5000 * numpy.cos(freq * 2 * numpy.pi * t)
 
+def window_hanning(wave_window):
+	#get the values of a hanning curve. The wave window will be multiplied by these values
+	hanning_multipliers = numpy.hanning(len(wave_window))
+	result=[]
+	for i in range(len(wave_window)):
+		result.append(wave_window[i]*hanning_multipliers[i])
+	return result
+
 def build_song(musicfile):
 	song_wave=numpy.array([])
 	with open(musicfile,'r') as music:
@@ -24,11 +32,11 @@ def build_song(musicfile):
 				note_name = note[:-1]
 				note_octave = note[-1]
 				if note_octave == '4':
-					song_wave = numpy.append(song_wave, create_wave(freqs4[note_name],t))
+					song_wave = numpy.append(song_wave, window_hanning(create_wave(freqs4[note_name],t)))
 				elif note_octave == '5':
-					song_wave = numpy.append(song_wave, create_wave(freqs5[note_name],t))
+					song_wave = numpy.append(song_wave, window_hanning(create_wave(freqs5[note_name],t)))
 				elif note_octave == '6':
-					song_wave = numpy.append(song_wave, create_wave(freqs6[note_name],t))
+					song_wave = numpy.append(song_wave, window_hanning(create_wave(freqs6[note_name],t)))
 
 
 	return song_wave
@@ -61,6 +69,6 @@ if __name__ == '__main__':
 	musicwave = build_song(musicfile)
 	data, freqs, bins, im = plt.specgram(musicwave, NFFT=2048, Fs=44100, noverlap=900)
 	plt.ylim(0,800)
-	plt.title("Spectrogram of analytic_furelise.wav")
+	plt.title("Spectrogram of analytic_furelise_hanning.wav")
 	plt.show()
 	waveIO.write_wav_file("analytic_furelise.wav", waveIO.pack(musicwave))

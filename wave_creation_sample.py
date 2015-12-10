@@ -8,6 +8,14 @@ import waveIO
 def create_wave(freq,t):
     return 5000 * numpy.cos(freq * 2 * numpy.pi * t)
 
+def window_hanning(wave_window):
+	#get the values of a hanning curve. The wave window will be multiplied by these values
+	hanning_multipliers = numpy.hanning(len(wave_window))
+	result=[]
+	for i in range(len(wave_window)):
+		result.append(wave_window[i]*hanning_multipliers[i])
+	return result
+
 sr = 44100.
 dt = 1 / sr
 NFFT = 1024
@@ -83,3 +91,43 @@ big_sample = numpy.append(big_sample, create_wave(1479, t))
 big_sample = numpy.append(big_sample, create_wave(1567, t))
 big_sample = numpy.append(big_sample, create_wave(1661, t))
 waveIO.write_wav_file("bigsample.wav", waveIO.pack(big_sample))
+
+
+##############
+# Now build a universal sample, with short sections for each note through a few octaves
+t = numpy.arange(0, 0.5, dt)
+big_sample = create_wave(440, t)
+big_sample = window_hanning(big_sample)
+big_sample = numpy.append(big_sample, window_hanning(create_wave(261, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(277, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(293, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(311, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(329, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(349, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(369, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(391, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(415, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(466.16, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(493, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(523, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(554, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(587, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(622, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(659, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(698, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(739, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(783, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(830, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(880, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(932, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(987, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(1046, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(1108, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(1174, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(1244, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(1318, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(1396, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(1479, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(1567, t)))
+big_sample = numpy.append(big_sample, window_hanning(create_wave(1661, t)))
+waveIO.write_wav_file("bigsample_hanning.wav", waveIO.pack(big_sample))

@@ -13,9 +13,10 @@ sr = 44100.
 bpm = 148
 dt=0.5
 
-threshold = 1400
+threshold = 895
+#threshold = 1067
 
-WINDOW_LENGTH = 4500
+WINDOW_LENGTH = 8939
 OVERLAP_PERCENT = 0 # 0 <= OVERLAP PERCENT < 1
 
 # This dict holds the "ideal" values for each note in the Fourth octave.
@@ -91,6 +92,7 @@ def store_note(chunk):
 		all_notes.append(chunk)
 		note_index = len(all_notes) - 1
 
+	print("Max amplitude is {!s}".format(numpy.abs(w[idx])))
 	#If the loudest frequency is greater than the threshold, store this chunk's index in the appropriate note bin
 	# repeat for the next loudest frequency and so on until the frequencies are no longer louder than the threshold
 	while numpy.abs(w[idx]) > threshold and 27.5 <= frequency <= 4187:
@@ -238,6 +240,14 @@ def apply_window_function(func, data, tau):
 def window_rectangular(wave_window):
 	return wave_window*1
 
+def window_hanning(wave_window):
+	#get the values of a hanning curve. The wave window will be multiplied by these values
+	hanning_multipliers = numpy.hanning(len(wave_window))
+	result=[]
+	for i in range(len(wave_window)):
+		result.append(wave_window[i]*hanning_multipliers[i])
+	return result
+
 def plot_notes():
 	objects = []
 	quantities = []
@@ -279,6 +289,8 @@ def plot_notes():
 
 
 if __name__ == '__main__':
+	WINDOW_FUNC = window_hanning
+
 	# read and parse each input wave
 	for i in range(1, len(sys.argv) - 2):
 		#read in the wave file and unpack its data
@@ -298,7 +310,7 @@ if __name__ == '__main__':
 			window = []
 			window.extend(wave_data[i:i+WINDOW_LENGTH])
 			#multiply by the window function
-			window = window_rectangular(window)
+			window = WINDOW_FUNC(window)
 			wave_chunks.append(window)
 			
 		for i in range(len(wave_chunks)):
