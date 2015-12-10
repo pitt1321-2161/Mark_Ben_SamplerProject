@@ -6,14 +6,17 @@ import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import waveIO
-import random
 
 sr = 44100.
 
 bpm = 148
 dt=0.5
 
-threshold = 500
+threshold = 25
+#threshold = 1067
+
+WINDOW_LENGTH = 4500
+OVERLAP_PERCENT = 0.5 # 0 <= OVERLAP PERCENT < 1
 
 # This dict holds the "ideal" values for each note in the Fourth octave.
 # A wave will be said to correspond to a given note if its frequency is within 1%
@@ -75,6 +78,9 @@ def split_wave(wave, note_size):
 
 #places a wave chunk in the correct bin
 def store_note(chunk):
+	global threshold
+	#threshold=50
+	#when beginning to store a new sample, reset the threshold to its initial value
 	octave_multiplier = 1
 
 	w = numpy.fft.rfft(chunk) / (len(chunk))
@@ -83,10 +89,14 @@ def store_note(chunk):
 	idx = numpy.argmax(numpy.abs(w))
 	frequency = freqs[idx] * (sr/2)
 
+
 	if numpy.abs(w[idx]) > threshold and 27.5 <= frequency <= 4187:
 		# store the note in the list of all stored chunk, and get its index within that list
 		all_notes.append(chunk)
 		note_index = len(all_notes) - 1
+		#set the threshold to a value relative to the maximum amplitude in this sample
+		#threshold = max(0.2 * numpy.abs(w[idx]), 50)
+	print("Max amplitude is {!s} at frequency {!s}".format(numpy.abs(w[idx]), frequency))
 
 	#If the loudest frequency is greater than the threshold, store this chunk's index in the appropriate note bin
 	# repeat for the next loudest frequency and so on until the frequencies are no longer louder than the threshold
@@ -206,23 +216,55 @@ def build_song(musicfile, dt):
 			line = line.strip()
 			if line == '#':
 				continue
-			if line == '%':
-				empty_sample = numpy.zeros((dt * sr) - 1)
-				song_wave = numpy.append(song_wave, empty_sample)
-				continue
-			line_notes = line.split(',')
-			for note in line_notes:
-				note_name = note[:-1]
-				note_octave = note[-1]
+			for k in range(4):
+				#increase the length of song wave by half a window
+				if len(song_wave) >= WINDOW_LENGTH:
+					song_wave = numpy.append(song_wave, numpy.zeros(WINDOW_LENGTH / 2))
+				if line == '%':
+					#empty_sample = numpy.zeros((dt * sr) - 1)
+					if len(song_wave) < WINDOW_LENGTH:
+						song_wave = numpy.append(song_wave, empty_sample)
+					#else:
+					#	song_wave[-WINDOW_LENGTH :] = song_wave[-WINDOW_LENGTH : ] + empty_sample
+					
+					continue
+				line_notes = line.split(',')
+				for note in line_notes:
+					note_name = note[:-1]
+					note_octave = note[-1]
 
-				note_sample_bin = notes_db[note_name][int(note_octave) - 1]
-				note_sample_index = random.choice(note_sample_bin)
-				note_sample = all_notes[note_sample_index]
+					note_sample_bin = notes_db[note_name][int(note_octave) - 1]
+					note_sample_index = numpy.random.choice(note_sample_bin)
+					note_sample = all_notes[note_sample_index]
 
-				song_wave = numpy.append(song_wave, note_sample)
+					print(len(song_wave))
+					#song_wave = numpy.append(song_wave, note_sample)
+					if len(song_wave) < WINDOW_LENGTH:
+						song_wave = numpy.append(song_wave, note_sample)
+					else:
+						song_wave[-WINDOW_LENGTH :] = song_wave[-WINDOW_LENGTH : ] + note_sample
 
 
 	return song_wave
+
+
+def apply_window_function(func, data, tau):
+	result = numpy.array([])
+	for t in data:
+		result = numpy.append(result, data[t] * func(t - tau))
+	return result
+
+#Since we only apply the function to a window-size piece at a time, the rectangular window function simply returns the window sized piece intact
+def window_rectangular(wave_window):
+	return wave_window*1
+
+def window_hanning(wave_window):
+	#get the values of a hanning curve. The wave window will be multiplied by these values
+	hanning_multipliers = numpy.hanning(len(wave_window))
+	result=[]
+	for i in range(len(wave_window)):
+		result.append(wave_window[i]*hanning_multipliers[i])
+	return result
 
 def plot_notes():
 	objects = []
@@ -253,39 +295,45 @@ def plot_notes():
 		quantities.append(len(notes_db['A'][i]))
 		quantities.append(len(notes_db['A#'][i]))
 		quantities.append(len(notes_db['B'][i]))
-	print(objects)
 
 	y_pos = numpy.arange(len(objects))
-	print(y_pos)
-	print(quantities)
-	plt.bar(y_pos, quantities, align='center')
-	plt.title("notes pulled from wave by quantity, naive")
+
+	plt.bar(y_pos, quantities, align='center', width=0.75)
+	plt.title("notes pulled from wave by quantity, stft")
 	plt.xlabel("Note names and octaves")
 	plt.ylabel("quantity")
-	plt.xticks(y_pos, objects)
+	plt.xticks(y_pos, objects, fontsize=10)
 	plt.show()
 
 
 if __name__ == '__main__':
-	global dt
-	# figure out the correct dt length based on the tempo of the output wave you want
-	dt = compute_dt(bpm)
-	# read and parse each sample wave
+	WINDOW_FUNC = window_hanning
+
+	# read and parse each input wave
 	for i in range(1, len(sys.argv) - 2):
 		#read in the wave file and unpack its data
 		wave_data = waveIO.read_wav_file(sys.argv[i])
 		wave_data = waveIO.unpack(wave_data)
 		wave_time = len(wave_data)/sr
 
-		note_length = dt * sr
 
-		wave_chunks = split_wave(wave_data, int(note_length))
+		wave_chunks = []
 
-		#test_sample_wave(wave_chunks)
-
+		#Instead of multiplying the entire wave by the windowing function, we can simply examine window-sized pieces of the wave at a time
+		#counting by WINDOW_LENGTH*(1-OVERLAP_PERCENT) allows adjustment of what percent of each window overlaps with the next
+		#Example: OVERLAP_PERCENT = 0 means the next window will start where the previous window ended
+		#Example: OVERLAP_PERCENT = 0.5 means the next window will start at the halfway mark of the previous window
+		#This is necessary when using nonrectangular window functions, to prevent loss of data
+		for i in range(0, len(wave_data), int(WINDOW_LENGTH*(1-OVERLAP_PERCENT))):
+			window = []
+			window.extend(wave_data[i:i+WINDOW_LENGTH])
+			#multiply by the window function
+			window = WINDOW_FUNC(window)
+			wave_chunks.append(window)
+			
 		for i in range(len(wave_chunks)):
 			chunk = wave_chunks[i]
-			if len(chunk) != int(note_length):
+			if len(chunk) != WINDOW_LENGTH:
 				continue
 
 			store_note(chunk)
@@ -294,7 +342,7 @@ if __name__ == '__main__':
 	
 	# read and parse the music file
 	musicfile = sys.argv[-2]
-	song = build_song(musicfile, dt)
+	song = build_song(musicfile, WINDOW_LENGTH / float(sr))
 	waveIO.write_wav_file(sys.argv[-1], waveIO.pack(song))
 
 	

@@ -6,14 +6,13 @@ import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import waveIO
-import random
 
 sr = 44100.
 
 bpm = 148
 dt=0.5
 
-threshold = 895
+threshold = 310
 #threshold = 1067
 
 WINDOW_LENGTH = 8939
@@ -79,6 +78,8 @@ def split_wave(wave, note_size):
 
 #places a wave chunk in the correct bin
 def store_note(chunk):
+	global threshold
+	#when beginning to store a new sample, reset the threshold to its initial value
 	octave_multiplier = 1
 
 	w = numpy.fft.rfft(chunk) / (len(chunk))
@@ -87,21 +88,23 @@ def store_note(chunk):
 	idx = numpy.argmax(numpy.abs(w))
 	frequency = freqs[idx] * (sr/2)
 
+
 	if numpy.abs(w[idx]) > threshold and 27.5 <= frequency <= 4187:
 		# store the note in the list of all stored chunk, and get its index within that list
 		all_notes.append(chunk)
 		note_index = len(all_notes) - 1
+		#set the threshold to a value relative to the maximum amplitude in this sample
+		#threshold = 0.5 * numpy.abs(w[idx])
 
-	print("Max amplitude is {!s}".format(numpy.abs(w[idx])))
 	#If the loudest frequency is greater than the threshold, store this chunk's index in the appropriate note bin
 	# repeat for the next loudest frequency and so on until the frequencies are no longer louder than the threshold
 	while numpy.abs(w[idx]) > threshold and 27.5 <= frequency <= 4187:
 		#determine what octave then note is in
 		# Doubling a frequency increases the note's octave by 1
 		# Thus, if the frequency is outside the default range, simply half or double each bin value to figure out what note it is
-		while frequency < (note_freqs["C"] * octave_multiplier)*0.98:
+		while frequency < (note_freqs["C"] * octave_multiplier)*0.99:
 			octave_multiplier = octave_multiplier/2.
-		while frequency > (note_freqs["B"] * octave_multiplier)*1.02:
+		while frequency > (note_freqs["B"] * octave_multiplier)*1.01:
 			octave_multiplier = octave_multiplier*2
 
 		# iterate over each note in the scale, testing the chunk frequency
@@ -111,7 +114,7 @@ def store_note(chunk):
 		# represent chords
 		for note,note_frequency in note_freqs.iteritems():
 			octave_frequency = note_frequency * octave_multiplier
-			if octave_frequency * 0.98 <= frequency <= octave_frequency*1.02:
+			if octave_frequency * 0.99 <= frequency <= octave_frequency*1.01:
 				if octave_multiplier==0.125 and note_index not in notes_db[note][0]:
 					notes_db[note][0].append(note_index)
 					#return [w, freqs]
@@ -221,7 +224,7 @@ def build_song(musicfile, dt):
 				note_octave = note[-1]
 
 				note_sample_bin = notes_db[note_name][int(note_octave) - 1]
-				note_sample_index = random.choice(note_sample_bin)
+				note_sample_index = numpy.random.choice(note_sample_bin)
 				note_sample = all_notes[note_sample_index]
 
 				song_wave = numpy.append(song_wave, note_sample)
